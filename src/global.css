@@ -1,0 +1,50 @@
+@font-face {
+  font-family: "MyFont";
+  src: url("./assets/fonts/MoonlitFlow-Regular.otf") format("opentype");
+  font-weight: normal;
+  font-style: normal;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+  font-family: "MyFont", sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body,
+button,
+input,
+textarea,
+select,
+a,
+p,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+span,
+div {
+  font-family: "MyFont", sans-serif;
+}
+
+body {
+  overflow-x: hidden;
+  background: #ffffff;
+  color: #111111;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}

@@ -1,0 +1,24 @@
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  min-height: 100%;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
