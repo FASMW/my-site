@@ -1,22 +1,15 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import "./App.css";
 
 import bgImage from "./assets/bg.png";
 import image1 from "./assets/1.png";
 import image2 from "./assets/2.png";
-import leaf1 from "./assets/leaf1.png";
-import leaf2 from "./assets/leaf2.png";
-import leaf3 from "./assets/leaf3.png";
-import leaf4 from "./assets/leaf4.png";
-import leaf5 from "./assets/leaf5.png";
-
-const HERO_SCENE_WIDTH = 1920;
-const HERO_SCENE_HEIGHT = 980;
-const NEXT_SCENE_WIDTH = 1920;
-const NEXT_SCENE_HEIGHT = 980;
+import { aboutLinks } from "./content";
 
 const letters = ["F", "A", "S", "M", "W"];
-const leafImages = [leaf1, leaf2, leaf3, leaf4, leaf5];
+const glitchGlyphs = ["士", "義", "力", "切", "魂"];
+const SWAP_OUT_DURATION = 220;
+const SWAP_IN_DURATION = 240;
 
 function randomRange(min, max) {
   return Math.random() * (max - min) + min;
@@ -26,68 +19,71 @@ function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
 }
 
-function createLeaves(count = 20) {
-  return Array.from({ length: count }, (_, index) => ({
-    id: index,
-    src: leafImages[Math.floor(Math.random() * leafImages.length)],
-    left: `${randomRange(12, 78).toFixed(2)}%`,
-    top: `${randomRange(24, 46).toFixed(2)}%`,
-    drift: `${randomRange(-140, 180).toFixed(0)}px`,
-    duration: `${randomRange(14, 24).toFixed(2)}s`,
-    delay: `${randomRange(-24, 0).toFixed(2)}s`,
-    size: `${randomRange(24, 52).toFixed(0)}px`,
-    opacity: randomRange(0.68, 0.96).toFixed(2),
-    rotateEnd: `${Math.round(randomRange(220, 760))}deg`,
-  }));
-}
-
-function useSceneScale(designWidth, designHeight) {
-  const [scale, setScale] = useState(1);
+function useViewportSize() {
+  const [viewport, setViewport] = useState({
+    width: window.innerWidth,
+    height: window.innerHeight,
+  });
 
   useEffect(() => {
-    const updateScale = () => {
-      const viewportWidth = window.innerWidth;
-      const viewportHeight = window.innerHeight;
-      const nextScale = Math.min(
-        viewportWidth / designWidth,
-        viewportHeight / designHeight
-      );
-
-      setScale(nextScale);
+    const updateViewport = () => {
+      setViewport({
+        width: window.innerWidth,
+        height: window.innerHeight,
+      });
     };
 
-    updateScale();
-    window.addEventListener("resize", updateScale);
+    window.addEventListener("resize", updateViewport);
 
     return () => {
-      window.removeEventListener("resize", updateScale);
+      window.removeEventListener("resize", updateViewport);
     };
-  }, [designWidth, designHeight]);
+  }, []);
 
-  return scale;
+  return viewport;
+}
+
+function createGlitchData(displayChar, variant, strength = "normal") {
+  return {
+    active: true,
+    leaving: false,
+    variant,
+    strength,
+    displayChar,
+    dxTop: `${Math.round(randomRange(-12, 12))}px`,
+    dyTop: `${Math.round(randomRange(-4, 4))}px`,
+    dxBottom: `${Math.round(randomRange(-12, 12))}px`,
+    dyBottom: `${Math.round(randomRange(-4, 4))}px`,
+    skew: `${randomRange(-4, 4).toFixed(2)}deg`,
+    topStart: `${Math.round(randomRange(6, 16))}%`,
+    topEnd: `${Math.round(randomRange(30, 40))}%`,
+    bottomStart: `${Math.round(randomRange(60, 70))}%`,
+    bottomEnd: `${Math.round(randomRange(84, 94))}%`,
+  };
+}
+
+function createSwapData(fromChar, toChar, variant, strength = "normal") {
+  return {
+    ...createGlitchData(toChar, variant, strength),
+    fromChar,
+    toChar,
+  };
 }
 
 export default function App() {
-  const [showLetters, setShowLetters] = useState(false);
   const [glitchEnabled, setGlitchEnabled] = useState(false);
   const [glitches, setGlitches] = useState({});
   const [scrollProgress, setScrollProgress] = useState(0);
 
-  const heroScale = useSceneScale(HERO_SCENE_WIDTH, HERO_SCENE_HEIGHT);
-  const nextScale = useSceneScale(NEXT_SCENE_WIDTH, NEXT_SCENE_HEIGHT);
-  const fallingLeaves = useMemo(() => createLeaves(20), []);
+  const viewport = useViewportSize();
+  const isCompactHero = viewport.width <= 768 || viewport.height <= 760;
 
   useEffect(() => {
-    const revealTimer = setTimeout(() => {
-      setShowLetters(true);
-    }, 1400);
-
     const glitchStartTimer = setTimeout(() => {
       setGlitchEnabled(true);
     }, 2900);
 
     return () => {
-      clearTimeout(revealTimer);
       clearTimeout(glitchStartTimer);
     };
   }, []);
@@ -96,45 +92,72 @@ export default function App() {
     if (!glitchEnabled) return undefined;
 
     const timers = new Set();
+    let glyphSwapLocked = false;
+
+    const queueTimer = (fn, delay) => {
+      const timer = setTimeout(fn, delay);
+      timers.add(timer);
+      return timer;
+    };
 
     const scheduleGlitch = (index) => {
       const nextDelay = randomRange(2200, 7000);
 
-      const startTimer = setTimeout(() => {
+      queueTimer(() => {
         const strength = Math.random() < 0.75 ? "normal" : "strong";
+        const showAlternateGlyph = !glyphSwapLocked && Math.random() < 0.12;
 
-        const glitchData = {
-          active: true,
-          strength,
-          dxTop: Math.round(randomRange(-16, 16)),
-          dyTop: Math.round(randomRange(-5, 5)),
-          dxBottom: Math.round(randomRange(-16, 16)),
-          dyBottom: Math.round(randomRange(-5, 5)),
-          skew: `${randomRange(-6, 6).toFixed(2)}deg`,
-          topStart: `${Math.round(randomRange(4, 18))}%`,
-          topEnd: `${Math.round(randomRange(28, 42))}%`,
-          bottomStart: `${Math.round(randomRange(58, 72))}%`,
-          bottomEnd: `${Math.round(randomRange(82, 96))}%`,
-        };
+        if (!showAlternateGlyph) {
+          setGlitches((prev) => ({
+            ...prev,
+            [index]: createGlitchData(letters[index], "latin", strength),
+          }));
+
+          queueTimer(() => {
+            setGlitches((prev) => ({
+              ...prev,
+              [index]: null,
+            }));
+
+            scheduleGlitch(index);
+          }, strength === "strong" ? randomRange(180, 300) : randomRange(120, 220));
+
+          return;
+        }
+
+        const glyph = glitchGlyphs[Math.floor(Math.random() * glitchGlyphs.length)];
+        const holdDuration = 50;
+        glyphSwapLocked = true;
 
         setGlitches((prev) => ({
           ...prev,
-          [index]: glitchData,
+          [index]: createSwapData(letters[index], glyph, "swap-to-glyph", "normal"),
         }));
 
-        const stopTimer = setTimeout(() => {
+        queueTimer(() => {
+          setGlitches((prev) => ({
+            ...prev,
+            [index]: createGlitchData(glyph, "glyph", "normal"),
+          }));
+        }, Math.max(SWAP_OUT_DURATION, SWAP_IN_DURATION));
+
+        queueTimer(() => {
+          setGlitches((prev) => ({
+            ...prev,
+            [index]: createSwapData(glyph, letters[index], "swap-to-latin", strength),
+          }));
+        }, Math.max(SWAP_OUT_DURATION, SWAP_IN_DURATION) + holdDuration);
+
+        queueTimer(() => {
           setGlitches((prev) => ({
             ...prev,
             [index]: null,
           }));
 
+          glyphSwapLocked = false;
           scheduleGlitch(index);
-        }, strength === "strong" ? randomRange(180, 300) : randomRange(120, 220));
-
-        timers.add(stopTimer);
+        }, Math.max(SWAP_OUT_DURATION, SWAP_IN_DURATION) * 2 + holdDuration);
       }, nextDelay);
-
-      timers.add(startTimer);
     };
 
     letters.forEach((_, index) => scheduleGlitch(index));
@@ -160,142 +183,114 @@ export default function App() {
   }, []);
 
   const heroStyle = {
-    transform: `translateY(${scrollProgress * -160}px) scale(${1 - scrollProgress * 0.1})`,
-    opacity: clamp(1 - scrollProgress * 1.1, 0, 1),
-    filter: `blur(${scrollProgress * 8}px)`,
+    transform: `translateY(${scrollProgress * (isCompactHero ? -70 : -160)}px) scale(${
+      1 - scrollProgress * (isCompactHero ? 0.04 : 0.1)
+    })`,
+    opacity: clamp(1 - scrollProgress * (isCompactHero ? 0.55 : 1.1), 0, 1),
+    filter: `blur(${scrollProgress * (isCompactHero ? 4 : 8)}px)`,
   };
 
   return (
     <div className="page">
-      <section className="hero-section">
+      <section className={`hero-section ${isCompactHero ? "is-compact" : ""}`}>
         <div className="scene-viewport">
-          <div
-            className="scene-stage hero-stage"
-            style={{
-              width: `${HERO_SCENE_WIDTH}px`,
-              height: `${HERO_SCENE_HEIGHT}px`,
-              transform: `translate(-50%, -50%) scale(${heroScale})`,
-            }}
-          >
-            <div className="hero-animated" style={heroStyle}>
-              <div className="hero-layout">
-                <div className="bg-layer">
-                  <img src={bgImage} alt="" className="bg-image" />
-                  <div className="bg-fog fog-1" />
-                  <div className="bg-fog fog-2" />
-                  <div className="bg-light" />
-                </div>
+          <div className="hero-backdrop" aria-hidden="true">
+            <img src={bgImage} alt="" className="bg-image" />
+            <div className="bg-fog fog-1" />
+            <div className="bg-fog fog-2" />
+            <div className="bg-light" />
+          </div>
 
-                <img src={image1} alt="" className="center-image" />
+          <div className="hero-animated" style={heroStyle}>
+            <div className={`hero-layout ${isCompactHero ? "is-compact" : ""}`}>
+              <img src={image1} alt="" className="center-image" />
 
-                <div className={`vertical-text ${showLetters ? "reveal" : ""}`}>
-                  {letters.map((letter, index) => {
-                    const glitch = glitches[index];
+              <div className="vertical-text">
+                {letters.map((letter, index) => {
+                  const glitch = glitches[index];
 
-                    const style = glitch
-                      ? {
-                          "--dx-top": `${glitch.dxTop}px`,
-                          "--dy-top": `${glitch.dyTop}px`,
-                          "--dx-bottom": `${glitch.dxBottom}px`,
-                          "--dy-bottom": `${glitch.dyBottom}px`,
-                          "--skew": glitch.skew,
-                          "--top-start": glitch.topStart,
-                          "--top-end": glitch.topEnd,
-                          "--bottom-start": glitch.bottomStart,
-                          "--bottom-end": glitch.bottomEnd,
-                        }
-                      : undefined;
+                  const style = glitch
+                    ? {
+                        "--dx-top": glitch.dxTop,
+                        "--dy-top": glitch.dyTop,
+                        "--dx-bottom": glitch.dxBottom,
+                        "--dy-bottom": glitch.dyBottom,
+                        "--skew": glitch.skew,
+                        "--top-start": glitch.topStart,
+                        "--top-end": glitch.topEnd,
+                        "--bottom-start": glitch.bottomStart,
+                        "--bottom-end": glitch.bottomEnd,
+                      }
+                    : undefined;
+
+                  if (glitch?.variant === "swap-to-glyph" || glitch?.variant === "swap-to-latin") {
+                    const incomingClass =
+                      glitch.variant === "swap-to-latin"
+                        ? `glyph-face incoming is-latin-swap ${glitch.strength}`
+                        : "glyph-face incoming is-glyph-swap";
 
                     return (
                       <span
                         key={index}
-                        data-text={letter}
                         style={style}
-                        className={`glitch-letter ${
-                          glitch?.active ? `is-glitch ${glitch.strength}` : ""
-                        }`}
+                        className="glitch-letter is-symbol-swap-stack"
                       >
-                        {letter}
+                        <span className="glyph-face outgoing" aria-hidden="true">
+                          {glitch.fromChar}
+                        </span>
+                        <span className={incomingClass}>{glitch.toChar}</span>
                       </span>
                     );
-                  })}
-                </div>
+                  }
+
+                  let glitchClass = "";
+
+                  if (glitch?.active && glitch?.variant !== "glyph") {
+                    glitchClass = `is-glitch ${glitch.strength}`;
+                  }
+
+                  return (
+                    <span
+                      key={index}
+                      data-text={glitch?.displayChar ?? letter}
+                      style={style}
+                      className={`glitch-letter ${glitchClass}`}
+                    >
+                      {glitch?.displayChar ?? letter}
+                    </span>
+                  );
+                })}
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      <section className="next-section">
-        <div className="scene-viewport">
-          <div
-            className="scene-stage next-stage"
-            style={{
-              width: `${NEXT_SCENE_WIDTH}px`,
-              height: `${NEXT_SCENE_HEIGHT}px`,
-              transform: `translate(-50%, -50%) scale(${nextScale})`,
-            }}
-          >
-            <aside className="about-block" aria-label="About">
-              <p className="about-label">ABOUT</p>
-              <h2 className="about-title">FASMW</h2>
+      <section className="about-section" aria-label="About me">
+        <div className="about-shell">
+          <div className="about-copy">
+            <p className="about-label">ABOUT</p>
+            <h2 className="about-title">FASMW</h2>
 
-              <div className="about-links">
+            <div className="about-links">
+              {aboutLinks.map((link) => (
                 <a
+                  key={link.name}
                   className="about-link"
-                  href="https://github.com/FASMW"
+                  href={link.href}
                   target="_blank"
                   rel="noreferrer"
                 >
-                  <span className="about-link-name">GitHub</span>
-                  <span className="about-link-value">github.com/FASMW</span>
+                  <span className="about-link-name">{link.name}</span>
+                  <span className="about-link-value">{link.value}</span>
                 </a>
+              ))}
+            </div>
+          </div>
 
-                <a
-                  className="about-link"
-                  href="https://hackerlab.pro/users/MAXIMOV"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  <span className="about-link-name">Hackerlab</span>
-                  <span className="about-link-value">hackerlab.pro/users/MAXIMOV</span>
-                </a>
-
-                <a
-                  className="about-link"
-                  href="https://t.me/FASMW"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  <span className="about-link-name">Telegram</span>
-                  <span className="about-link-value">@FASMW</span>
-                </a>
-              </div>
-            </aside>
-
-            <div className="next-visual">
-              <div className="leaves-layer" aria-hidden="true">
-                {fallingLeaves.map((leaf) => (
-                  <img
-                    key={leaf.id}
-                    src={leaf.src}
-                    alt=""
-                    className="falling-leaf"
-                    style={{
-                      "--leaf-left": leaf.left,
-                      "--leaf-top": leaf.top,
-                      "--leaf-drift": leaf.drift,
-                      "--leaf-duration": leaf.duration,
-                      "--leaf-delay": leaf.delay,
-                      "--leaf-size": leaf.size,
-                      "--leaf-opacity": leaf.opacity,
-                      "--leaf-rotate-end": leaf.rotateEnd,
-                    }}
-                  />
-                ))}
-              </div>
-
-              <img src={image2} alt="" className="next-image" />
+          <div className="about-visual">
+            <div className="about-scene">
+              <img src={image2} alt="" className="about-image" />
             </div>
           </div>
         </div>
