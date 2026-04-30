@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import "./App.css";
 
 import bgImage from "./assets/bg.png";
-import image1 from "./assets/1.png";
+import heroVideo from "./assets/hero.webm";
 import image2 from "./assets/2.png";
 import { aboutLinks } from "./content";
 
@@ -203,7 +203,16 @@ export default function App() {
 
           <div className="hero-animated" style={heroStyle}>
             <div className={`hero-layout ${isCompactHero ? "is-compact" : ""}`}>
-              <img src={image1} alt="" className="center-image" />
+              <video
+                src={heroVideo}
+                className="center-image"
+                autoPlay
+                loop
+                muted
+                playsInline
+                preload="auto"
+                aria-hidden="true"
+              />
 
               <div className="vertical-text">
                 {letters.map((letter, index) => {
